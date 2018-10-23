@@ -5,6 +5,7 @@
 #include <sstream>
 #include <chrono>
 
+
 using namespace std;
 using namespace std::chrono;
 
@@ -17,8 +18,9 @@ block::block(uint32_t index, const string &data)
 {
 }
 
-void block::mine_block(uint32_t difficulty) noexcept
+double block::mine_block(uint32_t difficulty) noexcept
 {
+	
     string str(difficulty, '0');
 
     auto start = system_clock::now();
@@ -31,8 +33,8 @@ void block::mine_block(uint32_t difficulty) noexcept
 
     auto end = system_clock::now();
     duration<double> diff = end - start;
-
     cout << "Block mined: " << _hash << " in " << diff.count() << " seconds" << endl;
+	return diff.count();
 }
 
 std::string block::calculate_hash() const noexcept
@@ -45,12 +47,13 @@ std::string block::calculate_hash() const noexcept
 block_chain::block_chain()
 {
     _chain.emplace_back(block(0, "Genesis Block"));
-    _difficulty = 6;
+    _difficulty = 2;
 }
 
-void block_chain::add_block(block &&new_block) noexcept
+double block_chain::add_block(block &&new_block) noexcept
 {
     new_block.prev_hash = get_last_block().get_hash();
-    new_block.mine_block(_difficulty);
+    auto time = new_block.mine_block(_difficulty);
     _chain.push_back(new_block);
+	return time;
 }

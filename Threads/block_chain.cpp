@@ -32,6 +32,7 @@ double block::mine_block(uint32_t difficulty) noexcept
         _hash = calculate_hash();
     }
 	*/
+
 	auto num_threads = 8;
 	vector<thread> threads;
 
@@ -66,7 +67,7 @@ void block::calculate_hash(uint32_t difficulty) noexcept
 block_chain::block_chain()
 {
     _chain.emplace_back(block(0, "Genesis Block"));
-    _difficulty = 6;
+    _difficulty = 5;
 }
 
 double block_chain::add_block(block &&new_block) noexcept
