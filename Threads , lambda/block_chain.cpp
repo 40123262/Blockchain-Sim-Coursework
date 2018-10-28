@@ -17,6 +17,7 @@ block::block(uint32_t index, const string &data)
 : _index(index), _data(data), _time(static_cast<long>(index))
 {
 	_nonce = make_shared<atomic<uint64_t>>(0);
+	_hash_found = make_shared<atomic<bool>>(false);
 }
 
 double block::mine_block(uint32_t difficulty) noexcept
@@ -35,23 +36,22 @@ double block::mine_block(uint32_t difficulty) noexcept
 
 	auto num_threads = 8;
 	vector<thread> threads;
-	auto lambda_hash = [difficulty, str, this]
-	{
-		while (!hash_found)
-		{
-			stringstream ss;
-			ss << _index << _time << _data << ++(*_nonce) << prev_hash;
-			string temp = sha256(ss.str());
-			if (temp.substr(0, difficulty) == str) {
-				hash_found = true;
-				_hash = temp;
-			}
-		}
-	};
 
 	for (auto i = 0u; i < num_threads; ++i) 
 	{
-		threads.push_back(std::thread(lambda_hash));
+		threads.push_back(std::thread([difficulty, str, this]
+		{
+			while (!*_hash_found)
+			{
+				stringstream ss;
+				ss << _index << _time << _data << ++(*_nonce) << prev_hash;
+				string temp = sha256(ss.str());
+				if (temp.substr(0, difficulty) == str) {
+					*_hash_found = true;
+					_hash = temp;
+				}
+			}
+		}));
 	}
 	for (auto &thread : threads) 
 			thread.join();
@@ -66,13 +66,13 @@ double block::mine_block(uint32_t difficulty) noexcept
 void block::calculate_hash(uint32_t difficulty) noexcept
 {
 	const string str(difficulty, '0');
-	while (!hash_found)
+	while (!*_hash_found)
 	{
 		stringstream ss;
 		ss << _index << _time << _data << ++(*_nonce) << prev_hash;
 		string temp = sha256(ss.str());
 		if (temp.substr(0, difficulty) == str) {
-			hash_found = true;
+			*_hash_found = true;
 			_hash = temp;
 		}
 	}
@@ -81,7 +81,7 @@ void block::calculate_hash(uint32_t difficulty) noexcept
 block_chain::block_chain()
 {
     _chain.emplace_back(block(0, "Genesis Block"));
-    _difficulty = 6;
+    _difficulty = 3;
 }
 
 double block_chain::add_block(block &&new_block) noexcept

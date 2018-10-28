@@ -13,9 +13,9 @@ constexpr int num_threads = 8;
 // from parallelisation we will just use the index value, so time increments
 // by one each time: 1, 2, 3, etc.
 block::block(uint32_t index, const string &data)
-: _index(index), _data(data),_nonce(0), hash_found(false), _time(static_cast<long>(index))
+: _index(index), _data(data), hash_found(false), _time(static_cast<long>(index))
 {
-	//_nonce = make_shared<atomic<uint64_t>>(0);
+	_nonce = make_shared<atomic<uint64_t>>(0);
 }
 
 double block::mine_block(uint32_t difficulty) noexcept
@@ -23,10 +23,12 @@ double block::mine_block(uint32_t difficulty) noexcept
     string str(difficulty, '0');
     auto start = system_clock::now();
 
+	
 	#pragma omp parallel num_threads(num_threads) default(none) shared(difficulty)
 	{
 		calculate_hash(difficulty);
 	}
+
     auto end = system_clock::now();
     duration<double> diff = end - start;
 
@@ -40,11 +42,17 @@ void block::calculate_hash(uint32_t difficulty) noexcept
 	while (!hash_found)
 	{
 		stringstream ss;
-		ss << _index << _time << _data << ++(_nonce) << prev_hash;
+		#pragma omp critical
+		{
+			ss << _index << _time << _data << ++(*_nonce) << prev_hash;
+		}
 		string temp = sha256(ss.str());
-		if (temp.substr(0, difficulty) == str) {
-
+		if (temp.substr(0, difficulty) == str) 
+		{
+			#pragma omp critical
+			{
 			hash_found = true;
+			}
 			_hash = temp;
 		}
 	}
@@ -52,14 +60,17 @@ void block::calculate_hash(uint32_t difficulty) noexcept
 std::string block::calculate_hash() noexcept
 {
 		stringstream ss;
-		ss << _index << _time << _data << ++(_nonce) << prev_hash;
+		#pragma critical
+		{
+			ss << _index << _time << _data << ++(*_nonce) << prev_hash;
+		}
 		return sha256(ss.str());
 }
 
 block_chain::block_chain()
 {
     _chain.emplace_back(block(0, "Genesis Block"));
-    _difficulty = 6;
+    _difficulty = 3;
 }
 
 double block_chain::add_block(block &&new_block) noexcept

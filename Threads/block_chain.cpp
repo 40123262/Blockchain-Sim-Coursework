@@ -14,24 +14,16 @@ using namespace std::chrono;
 // from parallelisation we will just use the index value, so time increments
 // by one each time: 1, 2, 3, etc.
 block::block(uint32_t index, const string &data)
-: _index(index), _data(data),_nonce(0), _time(static_cast<long>(index))
+: _index(index), _data(data), _time(static_cast<long>(index))
 {
-	//_nonce = make_shared<atomic<uint64_t>>(0);
+	_nonce = make_shared<atomic<uint64_t>>(0);
+	_hash_found = make_shared<atomic<bool>>(false);
 }
 
 double block::mine_block(uint32_t difficulty) noexcept
 {
     string str(difficulty, '0');
     auto start = system_clock::now();
-
-
-	/*
-    while (_hash.substr(0, difficulty) != str)
-    {
-		++(*_nonce)
-        _hash = calculate_hash();
-    }
-	*/
 
 	auto num_threads = 8;
 	vector<thread> threads;
@@ -52,13 +44,13 @@ double block::mine_block(uint32_t difficulty) noexcept
 void block::calculate_hash(uint32_t difficulty) noexcept
 {
 	const string str(difficulty, '0');
-	while (!hash_found)
+	while (!*_hash_found)
 	{
 		stringstream ss;
-		ss << _index << _time << _data << ++(_nonce) << prev_hash;
+		ss << _index << _time << _data << ++(*_nonce) << prev_hash;
 		string temp = sha256(ss.str());
 		if (temp.substr(0, difficulty) == str) {
-			hash_found = true;
+			*_hash_found = true;
 			_hash = temp;
 		}
 	}
@@ -67,7 +59,7 @@ void block::calculate_hash(uint32_t difficulty) noexcept
 block_chain::block_chain()
 {
     _chain.emplace_back(block(0, "Genesis Block"));
-    _difficulty = 5;
+    _difficulty = 3;
 }
 
 double block_chain::add_block(block &&new_block) noexcept

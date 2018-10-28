@@ -18,7 +18,7 @@ private:
     std::string _hash;
     // Time code block was created.
     long _time;
-	bool hash_found = false;
+	std::shared_ptr<std::atomic<bool>> _hash_found;
     void calculate_hash(uint32_t difficulty) noexcept;
 
 public:
